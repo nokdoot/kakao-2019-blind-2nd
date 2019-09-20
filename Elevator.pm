@@ -29,14 +29,6 @@ sub is_empty {
     return FALSE;
 }
 
-sub grep_end_floor_passengers {
-    my $self = shift;
-    my $floor = $self->floor;
-    my @passengers = grep { $_->end == $floor }
-                     @{$self->passengers};
-    return \@passengers;
-}
-
 sub any_end_passenger {
     my $self = shift;
     return TRUE 

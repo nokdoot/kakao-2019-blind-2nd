@@ -33,7 +33,7 @@ my $start = API->start_api({
 });
 
 my $token = $start->{token};
-my $elevators;
+my $elevators = [];
 $elevators = new_elevators($elevators, $start->{elevators});
 my $timestamp = $start->{timestamp};
 my @call_occupied_by = ();
@@ -340,15 +340,13 @@ sub new_elevators {
     else {
         for my $json_of_elev ( @$json_of_eleves ) {
             my $id = $json_of_elev->{id};
-            my $elevator = $elevators->[$id];
             my @passengers
                 = map { Call->new($_) }
                   @{ $json_of_elev->{passengers} };
-            $elevator->id($json_of_elev->{id});
-            $elevator->floor($json_of_elev->{floor});
-            $elevator->passengers(\@passengers);
-            $elevator->status($json_of_elev->{status});
-            $new_elevators->[$id] = $elevator;
+            my %elevator = %$json_of_elev{qw/ id floor status/};
+            $elevator{passengers} = \@passengers;
+            bless \%elevator, 'Elevator';
+            $new_elevators->[$id] = \%elevator;
         }
     }
 

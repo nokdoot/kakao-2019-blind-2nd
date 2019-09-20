@@ -12,7 +12,6 @@ use Data::Dumper;
 use REST::Client;
 #use Mojo::JSON qw/ encode_json decode_json /;
 use JSON::XS;
-#use Cpanel::JSON::XS;
 
 sub start_api {
     my $class = shift;
