@@ -7,3 +7,8 @@ requires 'List::Util';
 requires 'Mojo::JSON';
 requires 'JSON::XS';
 requires 'Data::Structure::Util';
+requires 'Parallel::ForkManager';
+requires 'List::Util';
+requires 'List::MoreUtils';
+requires 'Cpanel::JSON::XS';
+requires 'Date::Time';

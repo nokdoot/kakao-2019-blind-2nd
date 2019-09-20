@@ -12,6 +12,7 @@ use Data::Dumper;
 use REST::Client;
 #use Mojo::JSON qw/ encode_json decode_json /;
 use JSON::XS;
+#use Cpanel::JSON::XS;
 
 sub start_api {
     my $class = shift;
@@ -44,6 +45,7 @@ sub on_calls_api {
     return undef if check_http_status($client) == FALSE;
 
     my $responseContent = $client->responseContent;
+#     say Dumper $responseContent;
     return decode_json($responseContent);
 }
 
@@ -52,7 +54,7 @@ sub action_api {
     my $args = shift;
     my $server_url = $args->{server_url};
     my $token = $args->{token};
-    #my $commands = encode_json $args->{commands};
+
     my $json_converter = JSON::XS->new->convert_blessed(1);
     my $commands = $json_converter->encode( $args->{commands} );
 

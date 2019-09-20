@@ -7,14 +7,15 @@ use Data::Dumper;
 
 use FindBin;
 use lib "$FindBin::Bin/../local/lib/perl5";
+use lib "$FindBin::Bin/../";
 
 use REST::Client;
 use Test::Simple;
 use JSON::XS;
-
+use API;
 
 my $server_url = 'http://localhost:8000';
-my $client = REST::Client->new();
+my $client = REST::Client->new($server_url);
 $client->setHost($server_url);
 $client->POST('/start/nokdoot/0/1');
 

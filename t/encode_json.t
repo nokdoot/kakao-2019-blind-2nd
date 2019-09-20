@@ -33,4 +33,3 @@ sub UNIVERSAL::TO_JSON {
     my $unblessed_clone = unbless( dclone($self) );
     return $unblessed_clone;
 }
-

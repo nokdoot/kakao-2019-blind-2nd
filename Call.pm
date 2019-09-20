@@ -13,6 +13,12 @@ has 'timestamp' => (is => 'ro', isa => 'Int');
 has 'start'     => (is => 'ro', isa => 'Int');
 has 'end'       => (is => 'ro', isa => 'Int');
 
+sub towards {
+    my $self = shift;
+    return 'UP' if $self->start < $self->end;
+    return 'DOWN';
+}
+
 sub towards_up {
     my $self = shift;
     return TRUE if $self->end > $self->start;
