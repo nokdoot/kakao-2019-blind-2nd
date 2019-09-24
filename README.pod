@@ -18,7 +18,9 @@
  첫 Call 을 탑승시킨 엘리베이터는 한 방향으로만 이동하며
  모든 승객이 내리면 다시 STOPPED 상태가 된다.
 
-=over 4 결과 ( timestamp )
+=over 4 
+
+결과 ( problem - timestamp )
 
 =item * problem0 - 16
 
