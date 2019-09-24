@@ -21,7 +21,7 @@ use Call;
 use Command;
 
 my $server_url = 'http://localhost:8000';
-my $problem_id = 1;
+my $problem_id = 2;
 my $number_of_elevators = 4;
 my $user_key = 'nokdoot';
 
@@ -189,11 +189,8 @@ while ( TRUE ) {
         commands    => $commands,
     });
 
-    say Dumper $all_calls;
-    say Dumper $elevators;
-    say Dumper $commands;
-
     $timestamp = $action->{timestamp};
+    say $timestamp;
     sleep(0.025);
 }
 
@@ -245,12 +242,7 @@ sub command_enter {
 
     my $calls = grep_enter_calls($elevator, $all_calls);
 
-    say scalar @{$all_calls};
-    say scalar @{$calls};
     @{$all_calls} = @{ difference_of_calls($all_calls, $calls) };
-    say scalar @{$all_calls};
-
-    say Dumper $elevator->id, $calls;
 
     my @call_ids = map { int($_->id) } @$calls;
 
