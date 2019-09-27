@@ -2,6 +2,12 @@
 
 =pod
 
+=head1 실행방법
+
+ $ sudo cpan Carton
+ $ carton install
+ $ perl solution1.pl
+
 =head1 마지막 승객이 발생한 timestamp
 
 =over 4
