@@ -12,6 +12,8 @@
 
 =item * problem2 - 1840
 
+=back
+
 =head1 방법 1 ( solution1.pl )
 
  각 엘리베이터의 상태를 확인하며 Command 를 결정한다.
