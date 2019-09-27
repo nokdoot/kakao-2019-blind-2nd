@@ -2,17 +2,27 @@
 
 =pod
 
+=head1 마지막 승객이 발생한 timestamp
+
+=over 4
+
+=item * problem0 - 2
+
+=item * problem1 - 543
+
+=item * problem2 - 1840
+
 =head1 방법 1 ( solution1.pl )
 
  각 엘리베이터의 상태를 확인하며 Command 를 결정한다.
 
- 엘리베이터의 최초 상태는 STOPPED 이며, 새롭게 발생한 Call 에 의해 움직이기 시작한다.
+ 엘리베이터의 최초 상태는 STOPPED 이며, 새롭게 발생한 Call_A 에 의해 움직이기 시작한다.
 
- 호출된 엘리베이터는 다른 Call 이 발생하더라도 무시하고 자신을 호출한 Call 의 층으로 이동한다.
+ 호출된 엘리베이터는 다른 Call 이 발생하더라도 무시하고 최초로 자신을 호출한 Call_A 의 층으로 이동한다.
 
- Call 을 태우고 Call 의 목적 방향으로 이동하며, 다른 Call 중 방향이 같은 Call 을 탑승시킨다. 
+ Call_A 을 태우고 Call_A 의 목적 방향으로 이동하며, 다른 Call 들 중 방향이 같은 Call_B, Call_C, ... 를 탑승시킨다. 
 
- 첫 Call 을 탑승시킨 엘리베이터는 한 방향으로만 이동하며 모든 승객이 내리면 다시 STOPPED 상태가 된다.
+ 엘리베이터는 Call_A, Call_B, Call_C, ... 의 모든 승객을 내려주고 나면 STOPPED 상태가 되어 새롭게 발생할 Call_A 를 기다린다.
 
 =over 4
 
@@ -25,4 +35,3 @@
 =back
 
 =cut
-

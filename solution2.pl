@@ -6,8 +6,8 @@ use feature qw/ say /;
 use Data::Dumper;
 use constant FALSE => 0;
 use constant TRUE => 1;
-
 use FindBin;
+
 use lib "$FindBin::Bin/local/lib/perl5";
 use lib './';
 use JSON::XS;
@@ -37,6 +37,9 @@ my $elevators = [];
 $elevators = new_elevators($elevators, $start->{elevators});
 my $timestamp = $start->{timestamp};
 my @call_occupied_by = ();
+my $waiting_time = 0;
+$call_occupied_by[2] = Call->new({start=>13});
+$call_occupied_by[3] = Call->new({start=>13});
 
 while ( TRUE ) {
     my $on_calls = API->on_calls_api({
@@ -52,6 +55,16 @@ while ( TRUE ) {
         = [ map { Call->new($_) } @{ $on_calls->{calls} } ];
 
     $elevators = new_elevators($elevators, $on_calls->{elevators});
+    $elevators->[2]->passengers( [ map { 
+            my $passenger = $_;
+            $passenger->end(13) if $passenger->end < 13;
+            $passenger
+        } @{ $elevators->[2]->passengers } ] );
+    $elevators->[3]->passengers( [ map { 
+            my $passenger = $_;
+            $passenger->end(13) if $passenger->end < 13;
+            $passenger
+        } @{ $elevators->[3]->passengers } ] );
 
     ELEVATOR:
     for my $elevator ( @$elevators ) {
@@ -85,12 +98,7 @@ while ( TRUE ) {
             
             if ( 
                 any_start_call($elevator, $all_calls)
-                and (
-                    $elevator->is_empty
-                    or (
-                        !$elevator->is_full 
-                    )
-                )
+                and !$elevator->is_full 
             ) {
                 my $command = make_command($elevator, 'OPEN');
                 push @$commands, $command;
@@ -100,11 +108,19 @@ while ( TRUE ) {
             if ( $elevator->is_empty ) {
                 CALL:
                 for my $call ( @$all_calls ) {
+                    next CALL if !cond_to_enter($elevator, $call);
                     for ( @call_occupied_by ) {
                         next if !defined $_;
                         next CALL if $_->start == $call->start;
                     }
-                    $call_occupied_by[$id] = $call;
+                    if ( $call->start == $elevator->floor ) {
+                        my $command = make_command($elevator, 'OPEN');
+                        push @$commands, $command;
+                        next ELEVATOR;
+                    }
+                    else {
+                        $call_occupied_by[$id] = $call;
+                    }
                     my $command 
                         = command_move_to_call($elevator, $call);
                     push @$commands, $command;
@@ -130,12 +146,7 @@ while ( TRUE ) {
 
             if (
                 any_start_call($elevator, $all_calls)
-                and (
-                    $elevator->is_empty
-                    or (
-                        !$elevator->is_full
-                    )
-                )
+                and !$elevator->is_full 
             ) {
                 my $command 
                     = command_enter($elevator, $all_calls);
@@ -143,6 +154,18 @@ while ( TRUE ) {
                 next ELEVATOR;
             }
 
+            if ( $id == 1 
+                 and $waiting_time < 8 
+            ) {
+                if ( !$elevator->is_full ) {
+                    $waiting_time++;
+                    my $command = make_command($elevator, 'OPEN');
+                    push @$commands, $command;
+                    next ELEVATOR;
+                }
+            }
+
+            $waiting_time = 0;
             my $command = make_command($elevator, 'CLOSE');
             push @$commands, $command;
             next ELEVATOR;
@@ -157,13 +180,11 @@ while ( TRUE ) {
 
             if (
                 any_start_call($elevator, $all_calls)
-                and (
+                and ( 
                     $elevator->is_empty
                     or (
                         !$elevator->is_full
-                        and any_same_toward($elevator, $all_calls)
-                    )
-                )
+                        and any_same_toward($elevator, $all_calls) ) )
             ) {
                 my $command = make_command($elevator, 'STOP');
                 push @$commands, $command;
@@ -182,6 +203,9 @@ while ( TRUE ) {
             }
         }
     }
+
+#     say Dumper $elevators;
+    say Dumper $commands;
 
     my $action = API->action_api({
         server_url  => $server_url,
@@ -213,12 +237,21 @@ sub command_move_to_call {
 sub grep_enter_calls {
     my ($elevator, $all_calls) = @_;
     my $passengers = $elevator->passengers;
+    my $id = $elevator->id;
 
     my $calls = [];
 
     for my $call ( @$all_calls ) {
         last if @$passengers == 8;
         next if $call->start != $elevator->floor;
+        next if !cond_to_enter($elevator, $call);
+
+        if ( $id == 1 ) {
+            $call->end(13) if $call->end >= 13;
+        }
+        elsif ( $id == 2 or $id == 3 ){
+            $call->end(13) if $call->end <= 13;
+        }
 
         if ( not @$passengers ) {
             push @$passengers, $call;
@@ -307,13 +340,33 @@ sub any_same_toward {
 
 sub any_start_call {
     my ($elevator, $all_calls) = @_;
+
     return TRUE 
         if any { 
+            my $call = $_;
             $_->start == $elevator->floor 
-            and ($elevator->is_empty 
-            or $_->towards eq $elevator->towards)
+            and (
+                $elevator->is_empty 
+                or $_->towards eq $elevator->towards )
+            and cond_to_enter($elevator, $call)
         } @$all_calls;
     return FALSE;
+}
+
+sub cond_to_enter {
+    my ($elevator, $call) = @_;
+    my $id = $elevator->id;
+    if ( $id == 0 ) {
+        return FALSE if $call->start > 12 or $call->end > 12;
+    }
+    elsif ( $id == 1 ) {
+        return FALSE if not ( ($call->start == 1 and $call->end >= 13 )
+                        or ($call->start == 13 and $call->end == 1 ) );
+    }
+    else {
+        return FALSE if $call->start < 13;
+    }
+    return TRUE;
 }
 
 sub new_elevators {

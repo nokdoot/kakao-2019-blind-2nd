@@ -46,16 +46,17 @@ while ( TRUE ) {
     
     last if $on_calls->{is_end}; 
 
-    my $commands = [];
 
     my $all_calls 
         = [ map { Call->new($_) } @{ $on_calls->{calls} } ];
 
     $elevators = new_elevators($elevators, $on_calls->{elevators});
 
+    my $commands = [];
+
     ELEVATOR:
     for my $elevator ( @$elevators ) {
-        my $commmand;
+        my $command;
         my $floor = $elevator->floor;
         my $status = $elevator->status;
         my $id = $elevator->id;
@@ -63,14 +64,18 @@ while ( TRUE ) {
         if ( defined $call_occupied_by[$id] ) {
             my $call = $call_occupied_by[$id];
             if ( $floor == $call->start ) {
-                my $command = make_command($elevator, 'STOP');
+                $command = command_stop($elevator);
                 push @$commands, $command;
                 $call_occupied_by[$id] = undef;
                 next ELEVATOR;
             }
             else {
-                my $command 
-                    = command_move_to_call($elevator, $call);
+                if ( $elevator->floor > $call->start ) {
+                    $command = command_down($elevator);
+                }
+                else {
+                    $command = command_up($elevator);
+                }
                 push @$commands, $command;
                 next ELEVATOR;
             }
@@ -78,21 +83,16 @@ while ( TRUE ) {
 
         if ( $status eq 'STOPPED' ) {
             if ( $elevator->any_end_passenger ){
-                my $command = make_command($elevator, 'OPEN');
+                $command = command_open($elevator);
                 push @$commands, $command;
                 next ELEVATOR;
             }
             
             if ( 
                 any_start_call($elevator, $all_calls)
-                and (
-                    $elevator->is_empty
-                    or (
-                        !$elevator->is_full 
-                    )
-                )
+                and !$elevator->is_full 
             ) {
-                my $command = make_command($elevator, 'OPEN');
+                $command = command_open($elevator);
                 push @$commands, $command;
                 next ELEVATOR;
             }
@@ -105,25 +105,31 @@ while ( TRUE ) {
                         next CALL if $_->start == $call->start;
                     }
                     $call_occupied_by[$id] = $call;
-                    my $command 
-                        = command_move_to_call($elevator, $call);
+                    if ( $elevator->floor > $call->start ) {
+                        $command = command_down($elevator);
+                    }
+                    else {
+                        $command = command_up($elevator);
+                    }
                     push @$commands, $command;
                     next ELEVATOR;
                 }
-                my $command = make_command($elevator, 'STOP');
+                $command = command_stop($elevator);
                 push @$commands, $command;
                 next ELEVATOR;
             }
             else {
-                my $command 
-                    = make_command($elevator, $elevator->towards);
+                $command 
+                    = command_up($elevator) if ( $elevator->towards eq 'UP' );
+                $command 
+                    = command_down($elevator) if ( $elevator->towards eq 'DOWN' );
                 push @$commands, $command;
                 next ELEVATOR;
             }
         }
         elsif ( $elevator->status eq 'OPENED' ) {
             if ( $elevator->any_end_passenger ){
-                my $command = command_exit($elevator);
+                $command = command_exit($elevator);
                 push @$commands, $command;
                 next ELEVATOR;
             }
@@ -137,20 +143,20 @@ while ( TRUE ) {
                     )
                 )
             ) {
-                my $command 
+                $command 
                     = command_enter($elevator, $all_calls);
                 push @$commands, $command;
                 next ELEVATOR;
             }
 
-            my $command = make_command($elevator, 'CLOSE');
+            $command = command_close($elevator);
             push @$commands, $command;
             next ELEVATOR;
         }
         elsif ( $elevator->status eq 'UPWARD'
                 || $elevator->status eq 'DOWNWARD' ) {
             if ( $elevator->any_end_passenger ) {
-                my $command = make_command($elevator, 'STOP');
+                $command = command_stop($elevator);
                 push @$commands, $command;
                 next ELEVATOR;
             }
@@ -158,30 +164,30 @@ while ( TRUE ) {
             if (
                 any_start_call($elevator, $all_calls)
                 and (
-                    $elevator->is_empty
-                    or (
-                        !$elevator->is_full
-                        and any_same_toward($elevator, $all_calls)
-                    )
+                    !$elevator->is_full
+                    and any_same_toward($elevator, $all_calls)
                 )
             ) {
-                my $command = make_command($elevator, 'STOP');
+                $command = command_stop($elevator);
                 push @$commands, $command;
                 next ELEVATOR;
             }
 
             if ( $elevator->status eq 'UPWARD' ) {
-                my $command = make_command($elevator, 'UP');
+                $command = command_up($elevator);
                 push @$commands, $command;
                 next ELEVATOR;
             }
             else {
-                my $command = make_command($elevator, 'DOWN');
+                $command = command_down($elevator);
                 push @$commands, $command;
                 next ELEVATOR;
             }
         }
     }
+
+    say Dumper $elevators;
+    say Dumper $commands;
 
     my $action = API->action_api({
         server_url  => $server_url,
@@ -191,23 +197,6 @@ while ( TRUE ) {
 
     $timestamp = $action->{timestamp};
     say $timestamp;
-    sleep(0.025);
-}
-
-sub command_move_to_call {
-    my ($elevator, $call) = @_;
-    my $command = "";
-
-    if ( $elevator->floor > $call->start ) {
-        $command = 'DOWN';
-    }
-    else {
-        $command = 'UP';
-    }
-    return Command->new({
-        elevator_id => $elevator->id,
-        command     => $command,
-    });
 }
 
 sub grep_enter_calls {
@@ -228,12 +217,12 @@ sub grep_enter_calls {
 
         my $passenger = $passengers->[0];
         if ( $call->towards eq $elevator->towards ) {
-            push @$passengers, $call;
             push @$calls, $call;
             next;
+            push @$passengers, $call;
         }
-    }
 
+    }
     return $calls;
 }
 
@@ -252,6 +241,53 @@ sub command_enter {
         call_ids    => \@call_ids
     });
 }
+
+sub command_open {
+    my $elevator = shift;
+    my $command = Command->new({
+        elevator_id => $elevator->id,
+        command     => 'OPEN'
+    });
+    return $command;
+}
+
+sub command_up {
+    my $elevator = shift;
+    my $command = Command->new({
+        elevator_id => $elevator->id,
+        command     => 'UP'
+    });
+    return $command;
+}
+
+sub command_down {
+    my $elevator = shift;
+    my $command = Command->new({
+        elevator_id => $elevator->id,
+        command     => 'DOWN'
+    });
+    return $command;
+}
+
+
+sub command_close {
+    my $elevator = shift;
+    my $command = Command->new({
+        elevator_id => $elevator->id,
+        command     => 'CLOSE'
+    });
+    return $command;
+
+}
+sub command_stop {
+    my $elevator = shift;
+    my $command = Command->new({
+        elevator_id => $elevator->id,
+        command     => 'STOP'
+    });
+    return $command;
+}
+
 
 sub difference_of_calls {
     my ($a, $b) = @_;
@@ -283,16 +319,6 @@ sub command_exit {
         command     => 'EXIT',
         call_ids    => \@call_ids,
     });
-}
-
-sub make_command {
-    my ($elevator, $cmd) = @_;
-    my $command = Command->new({
-        elevator_id => $elevator->id,
-        command     => $cmd,
-    });
-
-    return $command;
 }
 
 sub any_same_toward {
@@ -327,8 +353,8 @@ sub new_elevators {
             my $new_elevator = Elevator->new($json_of_elev);
             my $id = $new_elevator->{id};
             $new_elevators->[$id] = $new_elevator;
-        }
     }
+        }
     else {
         for my $json_of_elev ( @$json_of_eleves ) {
             my $id = $json_of_elev->{id};
@@ -353,8 +379,8 @@ written by brian d foy
 =cut
 
 sub UNIVERSAL::TO_JSON {
-    my( $self ) = shift;
 
+    my( $self ) = shift;
     use Storable qw(dclone);
 
     # https://metacpan.org/pod/Data::Structure::Util

@@ -11,7 +11,7 @@ use Moose;
 has 'id'        => (is => 'ro', isa => 'Int');
 has 'timestamp' => (is => 'ro', isa => 'Int');
 has 'start'     => (is => 'ro', isa => 'Int');
-has 'end'       => (is => 'ro', isa => 'Int');
+has 'end'       => (is => 'rw', isa => 'Int');
 
 sub towards {
     my $self = shift;
